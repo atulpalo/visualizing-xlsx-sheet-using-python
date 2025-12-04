@@ -1,0 +1,53 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler  # For easy scaling
+
+try:
+    # Load the Excel file into a DataFrame
+    df = pd.read_excel("INVENTORY.xlsx")
+
+    # Define the columns to use
+    x_column = 'MAT_DSC'     # Material Description
+    y_column = 'VAL_PRICE'   # Value Price
+
+    # Check if required columns exist in the DataFrame
+    if x_column in df.columns and y_column in df.columns:
+        
+        # Group by material and sum the value prices
+        grouped_data = df.groupby(x_column)[y_column].sum().reset_index()
+
+        # Sort descending by summed value price and pick top 20
+        top_data = grouped_data.sort_values(by=y_column, ascending=False).head(20)
+
+        # Initialize MinMaxScaler to scale values between 0 and 1
+        scaler = MinMaxScaler()
+        top_data['Scaled_VAL_PRICE'] = scaler.fit_transform(top_data[[y_column]])
+
+        # Plotting scaled values using a line chart
+        plt.figure(figsize=(14, 7))
+        plt.plot(top_data[x_column], top_data['Scaled_VAL_PRICE'],
+                 marker='o', linestyle='-', color='mediumseagreen', label='Scaled Value Price')
+
+        # Axis labels with units
+        plt.xlabel('Material Description', fontsize=12)
+        plt.ylabel('Scaled Value Price (0 to 1)', fontsize=12)
+        plt.title('Top 20 Materials by Scaled Value Price\nUnit: INR', fontsize=14)
+        plt.xticks(rotation=45, ha='right')
+        plt.grid(True)
+
+        # Annotate actual VAL_PRICE in ₹ on each point
+        for i, row in top_data.iterrows():
+            plt.text(row[x_column], row['Scaled_VAL_PRICE'] + 0.02,
+                     f"₹{int(row[y_column]):,}", ha='center', va='bottom', fontsize=9, rotation=90)
+
+        plt.tight_layout()
+        plt.legend()
+        plt.show()
+
+    else:
+        print(f"Columns '{x_column}' or '{y_column}' not found in the Excel file.")
+
+except FileNotFoundError:
+    print("Excel file not found.")
+except Exception as e:
+    print(f"An error occurred: {e}")
