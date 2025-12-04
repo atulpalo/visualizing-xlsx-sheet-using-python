@@ -1,0 +1,56 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+file_path = "ZEDW_BUDGET_DASH_OTHER_V.xlsx"
+
+try:
+    df = pd.read_excel(file_path)
+
+    required_cols = {'GJAHR', 'SHOP', 'BUDGET'}
+    if required_cols.issubset(df.columns):
+        df = df.dropna(subset=['GJAHR', 'SHOP', 'BUDGET'])
+        df['GJAHR'] = df['GJAHR'].astype(str)
+        df['BUDGET'] = pd.to_numeric(df['BUDGET'], errors='coerce').fillna(0)
+
+        # Group and pivot data
+        grouped = df.groupby(['GJAHR', 'SHOP'])['BUDGET'].sum().reset_index()
+        pivot = grouped.pivot(index='GJAHR', columns='SHOP', values='BUDGET').fillna(0)
+
+        # Top 10 shops + Others
+        top_n = 10
+        top_shops = pivot.sum().sort_values(ascending=False).head(top_n).index
+        pivot['Other'] = pivot.drop(columns=top_shops).sum(axis=1)
+        plot_shops = list(top_shops) + ['Other']
+        plot_data = pivot[plot_shops]
+
+        # Min-max scaling
+        plot_data_scaled = (plot_data - plot_data.min()) / (plot_data.max() - plot_data.min())
+
+        # Plotting
+        plt.figure(figsize=(16, 8))
+        sns.set_style("whitegrid")
+        palette = sns.color_palette("tab10", n_colors=len(plot_data_scaled.columns))
+
+        for i, shop in enumerate(plot_data_scaled.columns):
+            plt.plot(plot_data_scaled.index, plot_data_scaled[shop],
+                     marker='o', label=shop, linewidth=2, markersize=7, color=palette[i])
+
+        # Updated labels with units
+        plt.xlabel('Year', fontsize=14)
+        plt.ylabel('Scaled Budget (0 to 1 scale, Original Unit: INR)', fontsize=14)
+        plt.title(f'Year-wise Scaled Budget by Shop (Top {top_n} + Other)\nUnit: Indian Rupees (INR)',
+                  fontsize=16, fontweight='bold')
+
+        plt.legend(loc='upper left', bbox_to_anchor=(1, 1), fontsize='medium', title='Shop')
+        plt.grid(True, axis='y', linestyle='--', alpha=0.7)
+        plt.tight_layout()
+        plt.show()
+
+    else:
+        print(f"Required columns {required_cols} not found in the Excel file.")
+
+except FileNotFoundError:
+    print("Excel file not found.")
+except Exception as e:
+    print(f"An error occurred: {e}")
