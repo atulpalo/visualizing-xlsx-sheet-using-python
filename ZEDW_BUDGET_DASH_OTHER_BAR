@@ -1,0 +1,44 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+
+file_path = "ZEDW_BUDGET_DASH_OTHER_V.xlsx"
+df = pd.read_excel(file_path)
+
+required_cols = {'GJAHR', 'SHOP', 'BUDGET'}
+if required_cols.issubset(df.columns):
+    # Drop rows with missing required columns
+    df = df.dropna(subset=['GJAHR', 'SHOP', 'BUDGET'])
+
+    # Ensure correct data types
+    df['GJAHR'] = df['GJAHR'].astype(str)
+    df['BUDGET'] = pd.to_numeric(df['BUDGET'], errors='coerce').fillna(0)
+
+    # Group by year and shop, sum the budget
+    grouped = df.groupby(['GJAHR', 'SHOP'])['BUDGET'].sum().reset_index()
+
+    # Pivot to get shops as columns, years as index
+    pivot = grouped.pivot(index='GJAHR', columns='SHOP', values='BUDGET').fillna(0)
+
+    # Limit to top 10 shops, aggregate others
+    top_n = 10
+    top_shops = pivot.sum().sort_values(ascending=False).head(top_n).index
+    pivot['Other'] = pivot.drop(columns=top_shops).sum(axis=1)
+    pivot = pivot[top_shops.tolist() + ['Other']]
+
+    # --- Min-Max Scaling applied here ---
+    pivot_scaled = (pivot - pivot.min()) / (pivot.max() - pivot.min())
+
+    # Plot the scaled data
+    ax = pivot_scaled.plot(kind='bar', figsize=(16, 8))
+
+    # Updated axis labels with units
+    plt.xlabel('Year', fontsize=12)
+    plt.ylabel('Scaled Budget (0 to 1 scale, Original Unit: INR)', fontsize=12)
+    plt.title(f'Scaled Year-wise Budget by Shop (Top {top_n} + Other)\nUnit: Indian Rupees (INR)', fontsize=14)
+    plt.legend(title='Shop', bbox_to_anchor=(1.05, 1), loc='upper left', fontsize='small')
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.tight_layout()
+    plt.show()
+
+else:
+    print(f"Required columns {required_cols} not found in the Excel file.")
