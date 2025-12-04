@@ -1,0 +1,53 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler  # For easy scaling
+
+try:
+    # Load the Excel file into a DataFrame
+    df = pd.read_excel("INVENTORY.xlsx")
+
+    # Define the columns to use
+    x_column = 'MAT_DSC'     # Material Description (categorical)
+    y_column = 'VAL_PRICE'   # Value Price (numeric)
+
+    # Check if required columns exist in the DataFrame
+    if x_column in df.columns and y_column in df.columns:
+        
+        # Group by material and sum the value prices
+        grouped_data = df.groupby(x_column)[y_column].sum().reset_index()
+
+        # Sort descending by summed value price and pick top 20
+        top_data = grouped_data.sort_values(by=y_column, ascending=False).head(20)
+
+        # Initialize MinMaxScaler to scale values between 0 and 1
+        scaler = MinMaxScaler()
+
+        # Fit and transform the VAL_PRICE column and add as a new column
+        top_data['Scaled_VAL_PRICE'] = scaler.fit_transform(top_data[[y_column]])
+
+        # Plot the scaled values for easier comparison
+        plt.figure(figsize=(14, 7))
+        bars = plt.bar(top_data[x_column], top_data['Scaled_VAL_PRICE'], color='mediumseagreen')
+
+        # Axis labels with units
+        plt.xlabel('Material Description', fontsize=12)
+        plt.ylabel('Scaled Value Price (0 to 1)', fontsize=12)
+        plt.title('Top 20 Materials by Value Price (Scaled)\nUnit: INR', fontsize=14)
+        plt.xticks(rotation=45, ha='right')
+
+        # Annotate each bar with original VAL_PRICE in INR
+        for bar, price in zip(bars, top_data[y_column]):
+            height = bar.get_height()
+            plt.text(bar.get_x() + bar.get_width()/2, height + 0.02,
+                     f'₹{int(price):,}', ha='center', va='bottom', fontsize=9, rotation=90)
+
+        plt.tight_layout()
+        plt.show()
+
+    else:
+        print(f"Columns '{x_column}' or '{y_column}' not found in the Excel file.")
+
+except FileNotFoundError:
+    print("Excel file not found.")
+except Exception as e:
+    print(f"An error occurred: {e}")
